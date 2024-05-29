@@ -1,6 +1,5 @@
 mod lsi_parser;
 
-use crate::components::preset_image::PresetImage;
 use crate::presets::lsi_parser::parse_lsi_image;
 use crate::types::PresetType::{System, Timbre};
 use crate::types::{

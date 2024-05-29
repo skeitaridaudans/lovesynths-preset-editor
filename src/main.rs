@@ -1,3 +1,5 @@
+//#![windows_subsystem = "windows"]
+
 pub mod colors;
 pub mod components;
 mod fonts;
@@ -6,7 +8,6 @@ pub mod styles;
 mod types;
 mod utils;
 
-use crate::components::preset_image::PresetImage;
 use crate::components::preset_list::{preset_container, preset_list};
 use crate::fonts::load_fonts;
 use crate::presets::{load_presets, save_presets};
@@ -24,6 +25,7 @@ use rfd::FileDialog;
 use std::collections::HashMap;
 use std::fs;
 use tap::Pipe;
+use crate::colors::{BACKGROUND_COLOR, PRIMARY_COLOR};
 
 fn main() {
     MainWindow::run(Settings {
@@ -201,9 +203,9 @@ impl Application for MainWindow {
         Theme::custom(
             "Main theme".to_string(),
             Palette {
-                background: Color::BLACK,
+                background: BACKGROUND_COLOR,
                 text: Color::WHITE,
-                primary: Color::from_rgb(0.85, 0.27, 0.94),
+                primary: PRIMARY_COLOR,
                 success: Color::from_rgb(0.13, 0.77, 0.37),
                 danger: Color::from_rgb(0.94, 0.27, 0.27),
             },
@@ -223,8 +225,8 @@ impl Application for MainWindow {
             .height(Length::Fill)
             .into(),
             container(match &self.bottom_message {
-                Success(msg) => text(msg).style(Text::Color(green)),
-                Error(msg) => text(msg).style(Text::Color(red)),
+                Success(msg) => text(msg).style(Text::Color(self.theme().palette().success)),
+                Error(msg) => text(msg).style(Text::Color(self.theme().palette().danger)),
                 None => text(""),
             })
             .padding([10, 0])

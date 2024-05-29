@@ -1,8 +1,8 @@
-use crate::colors::{preset_color, preset_selected_color};
+use crate::colors::{HIGHLIGHT_BACKGROUND_COLOR, PRESET_COLOR, PRESET_HOVER_COLOR, PRESET_SELECTED_COLOR};
 use iced::border::Radius;
 use iced::widget::button;
 use iced::widget::button::Appearance;
-use iced::{Border, Color, Theme};
+use iced::{Background, Border, Color, Theme};
 
 pub struct PresetButtonStyle {
     pub selected: bool,
@@ -28,13 +28,25 @@ impl button::StyleSheet for PresetButtonStyle {
                 radius: Radius::from(8.0),
                 width: if self.selected { 2.0 } else { 1.0 },
                 color: if self.selected {
-                    preset_selected_color()
+                    PRESET_SELECTED_COLOR
                 } else {
-                    preset_color()
+                    PRESET_COLOR
                 },
             },
             text_color: Color::WHITE,
             shadow: Default::default(),
+        }
+    }
+
+    fn hovered(&self, style: &Self::Style) -> Appearance {
+        Appearance {
+            background: Some(Background::Color(HIGHLIGHT_BACKGROUND_COLOR)),
+            border: Border {
+                radius: Radius::from(8.0),
+                width: 1.0,
+                color: PRESET_HOVER_COLOR,
+            },
+            ..self.active(style)
         }
     }
 }

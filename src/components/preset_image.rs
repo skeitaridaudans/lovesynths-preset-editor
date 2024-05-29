@@ -5,12 +5,12 @@ use crate::AppMessage;
 use iced::mouse::Cursor;
 use iced::theme::Button;
 use iced::widget::canvas::{Frame, Geometry, Path, Program, Stroke};
-use iced::widget::{button, container, Canvas};
+use iced::widget::{button, container, Canvas, Component};
 use iced::{Alignment, Color, Element, Length, Point, Rectangle, Renderer, Theme};
 use nom::Parser;
-use crate::colors::preset_color;
+use crate::colors::PRESET_COLOR;
 
-pub struct PresetImage {
+struct PresetImage {
     image: ImageData,
 }
 
@@ -33,14 +33,14 @@ impl<Message> Program<Message> for PresetImage {
                     continue;
                 };
 
-                builder.move_to(make_display_point(first));
+                builder.move_to(make_display_point(first, frame.width()));
                 for point in line.iter().skip(1) {
-                    builder.line_to(make_display_point(point));
+                    builder.line_to(make_display_point(point, frame.width()));
                 }
             }
         });
 
-        frame.stroke(&path, Stroke::default().with_color(preset_color()));
+        frame.stroke(&path, Stroke::default().with_color(PRESET_COLOR));
         vec![frame.into_geometry()]
     }
 }
