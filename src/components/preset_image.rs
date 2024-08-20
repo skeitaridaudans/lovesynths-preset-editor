@@ -10,11 +10,11 @@ use iced::{Alignment, Color, Element, Length, Point, Rectangle, Renderer, Theme}
 use nom::Parser;
 use crate::colors::PRESET_COLOR;
 
-struct PresetImage {
+struct PresetImageCanvas {
     image: ImageData,
 }
 
-impl<Message> Program<Message> for PresetImage {
+impl<Message> Program<Message> for PresetImageCanvas {
     type State = ();
 
     fn draw(
@@ -53,7 +53,7 @@ pub fn preset_image(index: i32, entry: &LoadedPresetEntry, selected: Option<(i32
         PresetButtonStyle::new()
     };
 
-    button(Canvas::new(PresetImage {
+    button(Canvas::new(PresetImageCanvas {
         image: entry.image.clone(),
     }))
     .on_press(AppMessage::ClickPreset(index, side))

@@ -92,53 +92,10 @@ impl Application for MainWindow {
             AppMessage::ClickPreset(i, side) => {
                 match self.selected {
                     Some((from, from_side)) => {
-                        let to_side = side;
-                        if !self.preset_lists.contains_key(&from_side)
-                            || !self.preset_lists.contains_key(&to_side)
-                        {
-                            self.show_error("Either side is not loaded, cannot proceed with move");
-                            return Command::none();
+                        match self.move_preset(from, from_side, i, side) {
+                            Ok(_) => {},
+                            Err(message) => self.show_error(&message)
                         }
-
-                        let from_preset = self
-                            .preset_lists
-                            .get_mut(&from_side)
-                            .unwrap()
-                            .presets
-                            .remove(&from);
-                        let to_preset = self
-                            .preset_lists
-                            .get_mut(&to_side)
-                            .unwrap()
-                            .presets
-                            .remove(&i);
-
-                        match from_preset {
-                            Some(e) => {
-                                self.preset_lists
-                                    .get_mut(&to_side)
-                                    .unwrap()
-                                    .presets
-                                    .insert(i, e);
-                            }
-                            None => {
-                                self.show_error("Selected item does not exist, cannot move");
-                            }
-                        }
-
-                        // Swap the items if there is a preset in both slots
-                        match to_preset {
-                            Some(e) => {
-                                self.preset_lists
-                                    .get_mut(&from_side)
-                                    .unwrap()
-                                    .presets
-                                    .insert(from, e);
-                            }
-                            None => (),
-                        }
-
-                        self.selected = None;
                     }
                     None if !self.preset_lists.contains_key(&side) => {
                         self.show_error("Side not loaded, cannot select preset");
@@ -213,9 +170,6 @@ impl Application for MainWindow {
     }
 
     fn view(&self) -> Element<Self::Message> {
-        let green = Color::new(0.0, 1.0, 0.0, 1.0);
-        let red = Color::new(1.0, 0.0, 0.0, 1.0);
-
         use BottomMessage::*;
         column([
             row([
@@ -247,19 +201,32 @@ impl MainWindow {
     }
 
     fn preset_not_loaded_view(&self, side: Side) -> Element<AppMessage> {
+        let other_side = side.other();
+        let other_side_preset_type = self.preset_lists
+            .get(&other_side)
+            .map(|s| s.preset_type);
+
         column([
             text("No preset loaded").into(),
             Space::with_height(10).into(),
-            button("Load timbre preset")
-                .style(Button::Custom(Box::new(GeneralButtonStyle::new())))
-                .padding([8, 12])
-                .on_press(AppMessage::LoadPreset(side, PresetType::Timbre))
-                .into(),
-            button("Load system preset")
-                .style(Button::Custom(Box::new(GeneralButtonStyle::new())))
-                .padding([8, 12])
-                .on_press(AppMessage::LoadPreset(side, PresetType::System))
-                .into(),
+            if matches!(other_side_preset_type, None | Some(PresetType::Timbre)) {
+                button("Load timbre preset")
+                    .style(Button::Custom(Box::new(GeneralButtonStyle::new())))
+                    .padding([8, 12])
+                    .on_press(AppMessage::LoadPreset(side, PresetType::Timbre))
+                    .into()
+            } else {
+                Space::with_height(0).into()
+            },
+            if matches!(other_side_preset_type, None | Some(PresetType::System)) {
+                button("Load system preset")
+                    .style(Button::Custom(Box::new(GeneralButtonStyle::new())))
+                    .padding([8, 12])
+                    .on_press(AppMessage::LoadPreset(side, PresetType::System))
+                    .into()
+            } else {
+                Space::with_height(0).into()
+            },
         ])
         .spacing(10)
         .width(Length::Fill)
@@ -275,5 +242,55 @@ impl MainWindow {
 
     fn show_success(&mut self, message: &str) {
         self.bottom_message = BottomMessage::Success(message.to_string())
+    }
+
+    fn move_preset(&mut self, from: i32, from_side: Side, to: i32, to_side: Side) -> Result<(), String> {
+        if !self.preset_lists.contains_key(&from_side)
+            || !self.preset_lists.contains_key(&to_side)
+        {
+            return Err("Either side is not loaded, cannot proceed with move".to_string());
+        }
+
+        let from_preset = self
+            .preset_lists
+            .get_mut(&from_side)
+            .unwrap()
+            .presets
+            .remove(&from);
+        let to_preset = self
+            .preset_lists
+            .get_mut(&to_side)
+            .unwrap()
+            .presets
+            .remove(&to);
+
+        match from_preset {
+            Some(e) => {
+                self.preset_lists
+                    .get_mut(&to_side)
+                    .unwrap()
+                    .presets
+                    .insert(to, e);
+            }
+            None => {
+                return Err("Selected item does not exist, cannot move".to_string());
+            }
+        }
+
+        // Swap the items if there is a preset in both slots
+        match to_preset {
+            Some(e) => {
+                self.preset_lists
+                    .get_mut(&from_side)
+                    .unwrap()
+                    .presets
+                    .insert(from, e);
+            }
+            None => (),
+        }
+
+        self.selected = None;
+
+        Ok(())
     }
 }
