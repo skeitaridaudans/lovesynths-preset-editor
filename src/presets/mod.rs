@@ -5,14 +5,20 @@ use crate::types::PresetType::{System, Timbre};
 use crate::types::{
     ImageData, LoadedPresetEntry, PointF, PresetData, PresetEntry, PresetType, Side,
 };
+use anyhow::anyhow;
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::fs;
-use std::fs::DirEntry;
-use std::io::Read;
 use std::path::Path;
 
 const SYNTH_IMAGE_COLUMNS: i32 = 6;
+const SYSTEM_PRESET_FILE_PREFIX: &str = "settings_system";
+const TIMBRE_PRESET_FILE_PREFIX: &str = "settings_timbre";
+const SYSTEM_IMAGE_FILE_PREFIX: &str = "image_system";
+const TIMBRE_IMAGE_FILE_PREFIX: &str = "image_timbre";
+const SYSTEM_PRESET_LIST_FILE: &str = "system_preset_list.json";
+const TIMBRE_PRESET_LIST_FILE: &str = "preset_list.json";
+const SYSTEM_AUTOSAVE_FILE: &str = "settings_system_auto.json";
 
 pub fn load_preset_list(path: impl AsRef<Path>) -> anyhow::Result<HashMap<i32, PresetEntry>> {
     let preset_list: Vec<PresetEntry> = serde_json::from_str(&fs::read_to_string(path)?)?;
@@ -29,8 +35,8 @@ pub fn load_preset_image(path: impl AsRef<Path>) -> anyhow::Result<Vec<Vec<Point
 pub fn load_presets(path: &str, preset_type: PresetType, side: Side) -> anyhow::Result<PresetData> {
     use PresetType::*;
     let preset_list_file = match preset_type {
-        Timbre => "preset_list.json",
-        System => "system_preset_list.json",
+        Timbre => TIMBRE_PRESET_LIST_FILE,
+        System => SYSTEM_PRESET_LIST_FILE,
     };
     let preset_list = load_preset_list(&format!("{path}/{preset_list_file}"))?;
     let loaded_preset_list: anyhow::Result<HashMap<i32, LoadedPresetEntry>> = preset_list
@@ -60,7 +66,7 @@ pub fn load_presets(path: &str, preset_type: PresetType, side: Side) -> anyhow::
         path: path.to_string(),
         preset_type,
         presets: loaded_preset_list?,
-        name: preset_name.to_string()
+        name: preset_name.to_string(),
     })
 }
 
@@ -74,8 +80,8 @@ fn preset_filename_location(index: i32) -> String {
 fn preset_image_filename(index: i32, preset_type: PresetType) -> String {
     use PresetType::*;
     let prefix = match preset_type {
-        Timbre => "image_timbre",
-        System => "image_system",
+        Timbre => TIMBRE_IMAGE_FILE_PREFIX,
+        System => SYSTEM_IMAGE_FILE_PREFIX,
     };
     let suffix = preset_filename_location(index);
 
@@ -85,8 +91,8 @@ fn preset_image_filename(index: i32, preset_type: PresetType) -> String {
 fn preset_filename(index: i32, preset_type: PresetType) -> String {
     use PresetType::*;
     let prefix = match preset_type {
-        Timbre => "settings_timbre",
-        System => "settings_system",
+        Timbre => TIMBRE_PRESET_FILE_PREFIX,
+        System => SYSTEM_PRESET_FILE_PREFIX,
     };
     let suffix = preset_filename_location(index);
 
@@ -115,9 +121,7 @@ pub fn save_presets(
     presets: &HashMap<i32, LoadedPresetEntry>,
     preset_type: PresetType,
 ) -> anyhow::Result<()> {
-    // Clear the directory before creating all files again
-    fs::remove_dir_all(path)?;
-    fs::create_dir(path)?;
+    remove_preset_files_from_dir(path, preset_type)?;
 
     let presets: HashMap<i32, LoadedPresetEntry> = presets
         .iter()
@@ -142,8 +146,8 @@ pub fn save_presets(
     }
 
     let preset_list_filename = match preset_type {
-        Timbre => "preset_list.json",
-        System => "system_preset_list.json",
+        Timbre => TIMBRE_PRESET_LIST_FILE,
+        System => SYSTEM_PRESET_LIST_FILE,
     };
     let preset_list: Vec<PresetEntry> = presets
         .into_iter()
@@ -155,6 +159,40 @@ pub fn save_presets(
         .collect();
     let preset_json = serde_json::to_string(&preset_list)?;
     fs::write(format!("{path}/{preset_list_filename}"), preset_json)?;
+
+    Ok(())
+}
+
+fn remove_preset_files_from_dir(path: &str, preset_type: PresetType) -> anyhow::Result<()> {
+    let (image_prefix, preset_prefix, preset_list) = match preset_type {
+        Timbre => (
+            TIMBRE_IMAGE_FILE_PREFIX,
+            TIMBRE_PRESET_FILE_PREFIX,
+            TIMBRE_PRESET_LIST_FILE,
+        ),
+        System => (
+            SYSTEM_IMAGE_FILE_PREFIX,
+            SYSTEM_PRESET_FILE_PREFIX,
+            SYSTEM_PRESET_LIST_FILE,
+        ),
+    };
+
+    for entry in fs::read_dir(path)? {
+        let entry = entry?;
+        let file_name = match entry.file_name().into_string() {
+            Ok(file_name) => file_name,
+            // Ignore files with invalid unicode filenames since we will never write to them
+            Err(_) => continue
+        };
+
+        if (file_name.starts_with(image_prefix)
+            || file_name.starts_with(preset_prefix)
+            || file_name == preset_list)
+            && file_name != SYSTEM_AUTOSAVE_FILE
+        {
+            fs::remove_file(entry.path())?;
+        }
+    }
 
     Ok(())
 }
